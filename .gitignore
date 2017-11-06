@@ -6,6 +6,7 @@
 *.lo
 *.o
 *.obj
+*.class
 
 # Precompiled Headers
 *.gch
@@ -30,3 +31,9 @@
 *.exe
 *.out
 *.app
+
+# Random IDE Files
+*.idea
+*.iml
+
+
