@@ -58,7 +58,7 @@ public class CompliantNode implements Node {
             }
         }
 
-        threshold = (int) (this.numNodes * p_graph * p_malicious * p_txDistribution + 0.5d) ;
+        threshold = (int) (this.numNodes * p_graph * p_malicious * p_txDistribution * 0.5 + 0.5d) ;
         for( Transaction tx: frequencyMap.keySet() ) {
             if( threshold <= frequencyMap.get(tx) ) 
                 this.pendingTransactions.add(tx) ;

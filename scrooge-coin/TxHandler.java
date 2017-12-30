@@ -1,4 +1,5 @@
 import java.util.ArrayList ;
+import java.util.Arrays ;
 
 public class TxHandler {
 
@@ -43,7 +44,7 @@ public class TxHandler {
             // Create a UTXO representing this input and...
             UTXO u = new UTXO(ip.prevTxHash, ip.outputIndex) ;
             // check if this UTXO is already claimed in this transaction.
-            if ((unspentInputs.size() > 0) && UTXOInList(unspentInputs, u)) {
+            if ((unspentInputs.size() > 0) && unspentInputs.contains(u)) {
                 // (3) no UTXO is claimed multiple times by {@code tx},
                 System.out.println("Double spend at " + inputId) ;
                 return false ;
@@ -55,7 +56,6 @@ public class TxHandler {
             if (this.utxoPool.contains(u)) {
                 Transaction.Output mappedOutput = this.utxoPool.getTxOutput(u) ;
                 // ... add it to totalInputValue to check (5)
-                totalInputValue += mappedOutput.value ;
                 if(!(Crypto.verifySignature(
                         mappedOutput.address, tx.getRawDataToSign(inputId), ip.signature
                 ))) {
@@ -63,6 +63,7 @@ public class TxHandler {
                     System.out.println("Singature invalid for " + inputId) ;
                     return false ;
                 }
+                totalInputValue += mappedOutput.value ;
             } else {
                 // (1) all outputs claimed by {@code tx} are in the current UTXO pool,
                 System.out.println("Not found in pool " + inputId) ;
@@ -79,11 +80,8 @@ public class TxHandler {
         return true ;
     }
 
-    public boolean UTXOInList(ArrayList<UTXO> items, UTXO u) {
-        for(UTXO i : items) {
-            if(i.equals(u)) { return false ; }
-        }
-        return true ;
+    public UTXOPool getUTXOPool() {
+        return this.utxoPool ;
     }
 
     /**
@@ -92,8 +90,36 @@ public class TxHandler {
      * updating the current UTXO pool as appropriate.
      */
     public Transaction[] handleTxs(Transaction[] possibleTxs) {
-        // IMPLEMENT THIS
-        return new Transaction[2] ;
+        ArrayList<Transaction> selectedTxs = new ArrayList<Transaction>() ;
+        ArrayList<Transaction> pool = new ArrayList<Transaction>(Arrays.asList(possibleTxs)) ;
+        ArrayList<Transaction> notAcceptedTxs = new ArrayList<Transaction>() ;
+        // Iterate through all transactions and keep adding to selectedTxs
+        // until no more can be added.
+        int numAdds = 0 ;
+        do {
+            numAdds = 0 ;
+            for(Transaction tx: pool) {
+                if(isValidTx(tx)) {
+                    numAdds++ ;
+                    selectedTxs.add(tx) ;
+                    updateUTXOPool(tx) ;
+                } else {
+                    notAcceptedTxs.add(tx) ;
+                }
+            }
+            pool = notAcceptedTxs ;
+            notAcceptedTxs = new ArrayList<Transaction>() ;
+        } while (numAdds > 0) ;
+        return (Transaction[]) selectedTxs.toArray(new Transaction[0]);
     }
-
+    private void updateUTXOPool(Transaction tx) {
+        // From utxo pool, remove all inputs...
+        for(Transaction.Input ti: tx.getInputs()) {
+            this.utxoPool.removeUTXO(new UTXO(ti.prevTxHash, ti.outputIndex)) ;
+        }
+        // and add outputs.
+        for(int i = 0; i < tx.numOutputs(); i++) {
+            this.utxoPool.addUTXO(new UTXO(tx.getHash(), i), tx.getOutput(i)) ;
+        }
+    }
 }
